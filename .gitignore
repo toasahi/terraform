@@ -1,0 +1,29 @@
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+# Local variable files that may contain secrets (envs/prod/*.tfvars are committed on purpose)
+*.auto.tfvars
+secrets.tfvars
+# Build artifacts
+build/
+*.zip
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+# Editors
+.idea/
+.vscode/
+.DS_Store
+.build/
+.ruff_cache/
