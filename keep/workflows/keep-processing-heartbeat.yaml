@@ -1,0 +1,39 @@
+# Keep processing heartbeat (Phase 2). Proves that the scheduler and the
+# workflow engine are alive by writing a heartbeat message to alerts.fifo once
+# a minute. The routing tool converts it into the KeepProcessingHeartbeat
+# metric; the observability module alarms when it goes missing.
+workflow:
+  id: keep-processing-heartbeat
+  name: Keep processing heartbeat
+  description: Emit a heartbeat message on alerts.fifo every minute
+  disabled: false
+  triggers:
+    - type: interval
+      value: 60
+  steps:
+    - name: now
+      provider:
+        type: python
+        with:
+          imports: datetime
+          code: datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+  actions:
+    - name: heartbeat
+      provider:
+        type: amazonsqs
+        config: "{{ providers.alerts-fifo }}"
+        with:
+          group_id: heartbeat-keep
+          dedup_id: "keep-heartbeat-{{ steps.now.results }}"
+          message: >-
+            {"schema_version": 1,
+             "origin": "keep",
+             "kind": "heartbeat",
+             "source": "keep-scheduler",
+             "name": "keep-processing-heartbeat",
+             "status": "firing",
+             "severity": "info",
+             "service": "keep",
+             "emitted_at": "{{ steps.now.results }}"}
+          origin: keep
+          kind: heartbeat

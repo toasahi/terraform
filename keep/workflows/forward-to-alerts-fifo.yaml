@@ -1,0 +1,39 @@
+# Every alert Keep processes is forwarded to alerts.fifo with origin=keep.
+# The routing tool treats it as enrichment when the direct copy already
+# delivered the notification, or as the notification itself for non-critical
+# alerts. The provider "alerts-fifo" is provisioned from KEEP_PROVIDERS.
+workflow:
+  id: forward-to-alerts-fifo
+  name: Forward alerts to alerts.fifo
+  description: Publish every processed alert on the alerts.fifo contract queue (source=keep)
+  disabled: false
+  triggers:
+    - type: alert
+  actions:
+    - name: send-to-alerts-fifo
+      provider:
+        type: amazonsqs
+        config: "{{ providers.alerts-fifo }}"
+        with:
+          group_id: "{{ alert.fingerprint }}"
+          # Distinct from the direct path's dedup id on purpose: exactly-once is the
+          # Journal's job (transition_id), not the 5-minute SQS window. See ADR-0004.
+          dedup_id: "{{ alert.labels.transition_id }}:keep"
+          message: >-
+            {"schema_version": 1,
+             "origin": "keep",
+             "kind": "{{ alert.labels.kind }}",
+             "event_id": "{{ alert.labels.event_id }}",
+             "transition_id": "{{ alert.labels.transition_id }}",
+             "fingerprint": "{{ alert.fingerprint }}",
+             "name": "{{ alert.name }}",
+             "status": "{{ alert.status }}",
+             "severity": "{{ alert.severity }}",
+             "critical": {{ alert.labels.critical }},
+             "service": "{{ alert.service }}",
+             "source": "{{ alert.labels.source }}",
+             "source_event_time": "{{ alert.labels.source_event_time }}",
+             "keep": {"alert_id": "{{ alert.id }}", "incident": "{{ alert.incident }}", "assignee": "{{ alert.assignee }}"}}
+          origin: keep
+          severity: "{{ alert.severity }}"
+          kind: "{{ alert.labels.kind }}"
